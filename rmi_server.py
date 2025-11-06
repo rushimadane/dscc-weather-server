@@ -1,18 +1,25 @@
-from xmlrpc.server import SimpleXMLRPCServer
-import random
+import requests
 
 def get_weather(city):
-    temp = round(random.uniform(20, 40), 1)
-    humidity = random.randint(40, 90)
-    condition = random.choice(["Sunny", "Cloudy", "Rainy", "Windy", "Foggy"])
-    result = f"City: {city}\nTemperature: {temp}°C\nHumidity: {humidity}%\nCondition: {condition}"
+    # Use Open-Meteo Geocoding API to get coordinates
+    geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}"
+    geo_data = requests.get(geo_url).json()
+
+    if not geo_data.get("results"):
+        return f"City '{city}' not found."
+
+    lat = geo_data["results"][0]["latitude"]
+    lon = geo_data["results"][0]["longitude"]
+
+    # Fetch current weather data
+    weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+    weather_data = requests.get(weather_url).json()
+
+    current = weather_data.get("current_weather", {})
+    temp = current.get("temperature")
+    wind = current.get("windspeed")
+    weather = current.get("weathercode", "")
+
+    result = f"🌍 City: {city}\n🌡 Temperature: {temp}°C\n💨 Wind Speed: {wind} km/h"
     return result
 
-def main():
-    server = SimpleXMLRPCServer(("0.0.0.0", 8000), allow_none=True)
-    print("✅ XML-RPC Weather Server is running on port 8000...")
-    server.register_function(get_weather, "get_weather")
-    server.serve_forever()
-
-if __name__ == "__main__":
-    main()
